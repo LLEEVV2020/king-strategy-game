@@ -1,0 +1,52 @@
+#__next {
+    max-width: 483px;
+    margin: auto;
+}
+
+h1 {
+    text-align: center;
+}
+
+body {
+    margin: 0;
+}
+
+.board {
+    display: flex;
+    flex-direction: column;
+}
+
+.row {
+    display: flex;
+}
+
+.tile {
+    width: 30px;
+    height: 30px;
+    border: 1px solid #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.tile.K {
+    background-color: blue;
+    color: white;
+}
+
+.tile.E {
+    background-color: red;
+    color: white;
+}
+
+/*.tile.@ {
+    background-color: gray;
+}
+
+.tile.# {
+    background-color: green;
+}*/
+
+.tile.S {
+    background-color: yellow;
+}
