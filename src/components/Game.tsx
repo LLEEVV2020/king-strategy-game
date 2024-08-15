@@ -24,7 +24,6 @@ const Game: React.FC = () => {
   const [modalIsOpen, setIsOpen] = useState(false);
   const [selectedPosition, setSelectedPosition] = useState<Position | null>(null);
 
-  // Инициализируем состояние на клиенте
   useEffect(() => {
     setGameState(initializeGameState());
   }, []);
@@ -33,12 +32,24 @@ const Game: React.FC = () => {
     if (gameState) {
       const interval = setInterval(() => {
         setGameState(prevState => {
-          if (!prevState) return prevState; // Предохранитель для null
+          if (!prevState) return prevState;
+
+          // Подсчитываем количество шахт на поле
+          let playerMines = 0;
+          let enemyMines = 0;
+          prevState.board.forEach(row => {
+            row.forEach(cell => {
+              if (cell === MINE) {
+                playerMines++;
+              }
+            });
+          });
+          
           return {
             ...prevState,
-            playerGold: prevState.playerGold + 2,
+            playerGold: prevState.playerGold + 2 + (playerMines * 2),
             enemyGold: prevState.enemyGold + 2,
-            board: prevState.board // сохраняем доску в неизменном виде
+            board: prevState.board
           };
         });
       }, 1000);
@@ -59,10 +70,10 @@ const Game: React.FC = () => {
       const newBoard = gameState.board.map(row => row.slice());
       newBoard[selectedPosition.x][selectedPosition.y] = MINE;
       setGameState(prevState => {
-        if (!prevState) return prevState; // Предохранитель для null
+        if (!prevState) return prevState;
         return {
           ...prevState,
-          board: newBoard // обновленный борт
+          board: newBoard
         };
       });
       setIsOpen(false);
@@ -70,7 +81,7 @@ const Game: React.FC = () => {
   };
 
   if (!gameState) {
-    return <div>Loading...</div>; // Может рендерить прелоадер пока состояние не инициализировано
+    return <div>Loading...</div>;
   }
 
   return (

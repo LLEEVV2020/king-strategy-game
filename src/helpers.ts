@@ -33,3 +33,4 @@ export const initializeGameState = (): GameState => {
   placeObstaclesOnBoard(board);
   return { board, playerGold: 0, enemyGold: 0 };
 };
+
