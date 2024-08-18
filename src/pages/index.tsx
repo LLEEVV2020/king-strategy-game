@@ -177,7 +177,10 @@ const App: React.FC = () => {
 
     const isControlled = isControlledByPlayer(x, y) && !grid.some((obj) => obj.x === x && obj.y === y);
 
-    if (isControlled) {
+    if (modalPosition && modalPosition.x === x && modalPosition.y === y) {
+      setIsModalOpen(false);
+      setModalPosition(null);
+    } else if (isControlled) {
       setModalPosition({ x, y });
       setIsModalOpen(true);
     }
@@ -263,7 +266,6 @@ const App: React.FC = () => {
           </div>
         )}
       </div>
-
       <div className="flex">
         <div>
           <div>Ваше золото: {playerGold}</div>
