@@ -54,7 +54,6 @@ const App: React.FC = () => {
   };
 
   const CONTROL_RADIUS = 1;
-  const CONTROL_RADIUS_INCREMENT = 0.0;
 
   useEffect(() => {
     if (gridCanvasRef.current) {
@@ -117,8 +116,7 @@ const App: React.FC = () => {
     const playerCastle = grid.find(obj => obj.type === 'K');
     const playerBarracks = grid.filter(obj => obj.type === 'Bk' || obj.type === 'Sk');
 
-    const totalRadiusIncrease = playerBarracks.length * CONTROL_RADIUS_INCREMENT;
-    const controlRadius = CONTROL_RADIUS + totalRadiusIncrease;
+    const controlRadius = CONTROL_RADIUS;
 
     return playerCastle && (
       isControlledBy(x, y, playerCastle, controlRadius) ||
@@ -130,8 +128,7 @@ const App: React.FC = () => {
     const enemyCastle = grid.find(obj => obj.type === 'E');
     const enemyBarracks = grid.filter(obj => obj.type === 'Be' || obj.type === 'Se');
 
-    const totalRadiusIncrease = enemyBarracks.length * CONTROL_RADIUS_INCREMENT;
-    const controlRadius = CONTROL_RADIUS + totalRadiusIncrease;
+    const controlRadius = CONTROL_RADIUS;
 
     return enemyCastle && (
       isControlledBy(x, y, enemyCastle, controlRadius) ||
