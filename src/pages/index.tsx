@@ -1,11 +1,14 @@
+// Импортируем необходимые хуки из React
 import { useEffect, useRef, useState } from 'react';
 
+// Задаем константы игры: размеры сетки, размер ячеек, здоровье баз игроков
 const GRID_WIDTH = 15;
 const GRID_HEIGHT = 9;
 const CELL_SIZE = 50;
 const PLAYER_BASE_HEALTH = 2000;
 const ENEMY_BASE_HEALTH = 1000;
 
+// Задаем стоимость построек для разных типов казарм
 const BASE_BUILDING_COSTS = {
   Bk: 150,
   Sk: 120,
@@ -13,12 +16,14 @@ const BASE_BUILDING_COSTS = {
   Se: 180,
 };
 
+// Описываем интерфейс для объекта сетки
 interface GridObject {
   type: 'K' | 'E' | '@' | '#' | 'Bk' | 'Be' | 'Sk' | 'Se';
   x: number;
   y: number;
 }
 
+// Функция генерирует случайные препятствия на сетке
 const generateRandomObstacles = (num: number): GridObject[] => {
   const obstacles: GridObject[] = [];
   while (obstacles.length < num) {
@@ -36,8 +41,12 @@ const generateRandomObstacles = (num: number): GridObject[] => {
   return obstacles;
 };
 
+// Главный компонент приложения
 const App: React.FC = () => {
+  // Создаем реф для канваса
   const gridCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  
+  // Создаем состояния сетки, золота игроков и модального окна
   const [grid, setGrid] = useState<GridObject[]>([
     ...generateRandomObstacles(20),
     { type: 'K', x: 2, y: 2 },
@@ -48,13 +57,16 @@ const App: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalPosition, setModalPosition] = useState<{ x: number; y: number } | null>(null);
 
+  // Объект для здоровья баз игроков
   const baseHealth = {
     player: PLAYER_BASE_HEALTH,
     enemy: ENEMY_BASE_HEALTH,
   };
 
+  // Радиус контроля объектиков (замков, казарм) на сетке
   const CONTROL_RADIUS = 1;
 
+  // Хук useEffect для отрисовки сетки при изменении состояния сети
   useEffect(() => {
     if (gridCanvasRef.current) {
       const canvas = gridCanvasRef.current;
@@ -66,8 +78,10 @@ const App: React.FC = () => {
     }
   }, [grid]);
 
+  // Хук useEffect для обновления золота игроков каждую секунду
   useEffect(() => {
     const interval = setInterval(() => {
+      // Увеличиваем золото игроков
       setPlayerGold((prev) => prev + 12);
       setEnemyGold((prev) => prev + 9);
 
@@ -75,9 +89,11 @@ const App: React.FC = () => {
       setEnemyGold((prev) => prev + (grid.filter(obj => obj.type === 'Se').length * 3));
     }, 1000);
 
+    // Очистка интервала при размонтировании компонента
     return () => clearInterval(interval);
   }, [grid]);
 
+  // Хук useEffect для автоматического строительства вражеских казарм
   useEffect(() => {
     const enemyBarracksCost = BASE_BUILDING_COSTS['Be'] + (grid.filter(obj => obj.type === 'Be').length * BASE_BUILDING_COSTS.Se);
     if (enemyGold >= enemyBarracksCost) {
@@ -85,6 +101,7 @@ const App: React.FC = () => {
     }
   }, [enemyGold]);
 
+  // Функция для отрисовки сетки на канвасе
   const renderGrid = (context: CanvasRenderingContext2D) => {
     for (let y = 0; y < GRID_HEIGHT; y++) {
       for (let x = 0; x < GRID_WIDTH; x++) {
@@ -112,6 +129,7 @@ const App: React.FC = () => {
     }
   };
 
+  // Проверка, контролируется ли ячейка игроком
   const isControlledByPlayer = (x: number, y: number) => {
     const playerCastle = grid.find(obj => obj.type === 'K');
     const playerBarracks = grid.filter(obj => obj.type === 'Bk' || obj.type === 'Sk');
@@ -124,6 +142,7 @@ const App: React.FC = () => {
     );
   };
 
+  // Проверка, контролируется ли ячейка врагом
   const isControlledByEnemy = (x: number, y: number) => {
     const enemyCastle = grid.find(obj => obj.type === 'E');
     const enemyBarracks = grid.filter(obj => obj.type === 'Be' || obj.type === 'Se');
@@ -136,12 +155,14 @@ const App: React.FC = () => {
     );
   };
 
+  // Функция для проверки контроля определенной ячейки
   const isControlledBy = (x: number, y: number, obj: GridObject, radius: number) => {
     const dx = Math.abs(x - obj.x);
     const dy = Math.abs(y - obj.y);
     return dx <= radius && dy <= radius;
   };
 
+  // Получение цвета объектов на сетке в зависимости от их типа
   const getObjectColor = (type: GridObject['type']) => {
     switch (type) {
       case 'K':
@@ -165,6 +186,7 @@ const App: React.FC = () => {
     }
   };
 
+  // Обработчик клика по канвасу
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const modalPos = gridCanvasRef.current?.getBoundingClientRect();
     if (!modalPos) return;
@@ -174,6 +196,7 @@ const App: React.FC = () => {
 
     const isControlled = isControlledByPlayer(x, y) && !grid.some((obj) => obj.x === x && obj.y === y);
 
+    // Реализуем логику открытия/закрытия модального окна при клике на ту же клетку
     if (modalPosition && modalPosition.x === x && modalPosition.y === y) {
       setIsModalOpen(false);
       setModalPosition(null);
@@ -183,6 +206,7 @@ const App: React.FC = () => {
     }
   };
 
+  // Функция для постройки казарм игроком
   const handleBuildBarracks = (type: 'Bk' | 'Sk') => {
     const existingCount = grid.filter(obj => obj.type === type).length;
     const cost = BASE_BUILDING_COSTS[type] * (existingCount + 1);
@@ -194,13 +218,13 @@ const App: React.FC = () => {
     }
   };
 
+  // Функция для постройки казарм врагом
   const buildEnemyBarracks = () => {
     const type = Math.random() < 0.5 ? 'Se' : 'Be';
     const existingCount = grid.filter(obj => obj.type === type).length;
     const cost = BASE_BUILDING_COSTS[type] * (existingCount + 1);
 
     const enemyCastle = grid.find((obj) => obj.type === 'E');
-    const barracks = grid.filter(obj => obj.type === 'Be' || obj.type === 'Se');
     if (!enemyCastle) return;
 
     let availablePositions = [];
@@ -221,12 +245,14 @@ const App: React.FC = () => {
     }
   };
 
+  // Получаем текущую стоимость построек казарм для игроков
   const getBarracksCosts = () => {
     const bkCost = BASE_BUILDING_COSTS.Bk * (grid.filter(obj => obj.type === 'Bk').length + 1);
     const skCost = BASE_BUILDING_COSTS.Sk * (grid.filter(obj => obj.type === 'Sk').length + 1);
     return { bkCost, skCost };
   };
 
+  // Получаем текущую стоимость построек казарм для врага
   const getEnemyBarracksCosts = () => {
     const beCost = BASE_BUILDING_COSTS.Be * (grid.filter(obj => obj.type === 'Be').length + 1);
     const seCost = BASE_BUILDING_COSTS.Se * (grid.filter(obj => obj.type === 'Se').length + 1);
@@ -281,4 +307,5 @@ const App: React.FC = () => {
   );
 };
 
+// Экспортируем компонент App для использования в других частях приложения
 export default App;
