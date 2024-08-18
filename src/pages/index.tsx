@@ -7,7 +7,7 @@ const PLAYER_BASE_HEALTH = 2000;
 const ENEMY_BASE_HEALTH = 1000;
 
 interface GridObject {
-  type: 'K' | 'E' | '@' | '#' | 'Bk' | 'Be';
+  type: 'K' | 'E' | '@' | '#' | 'Bk' | 'Be' | 'Sk' | 'Se';
   x: number;
   y: number;
 }
@@ -36,8 +36,8 @@ const App: React.FC = () => {
     { type: 'K', x: 2, y: 2 },
     { type: 'E', x: GRID_WIDTH - 3, y: GRID_HEIGHT - 3 },
   ]);
-  const [playerGold, setPlayerGold] = useState(12010);
-  const [enemyGold, setEnemyGold] = useState(10);
+  const [playerGold, setPlayerGold] = useState(1010);
+  const [enemyGold, setEnemyGold] = useState(310);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalPosition, setModalPosition] = useState<{ x: number; y: number } | null>(null);
 
@@ -63,11 +63,15 @@ const App: React.FC = () => {
   useEffect(() => {
     const interval = setInterval(() => {
       setPlayerGold((prev) => prev + 2);
-      setEnemyGold((prev) => prev + 222);
+      setEnemyGold((prev) => prev + 3);
+
+      // Увеличиваем золото в зависимости от количества казарм
+      setPlayerGold((prev) => prev + (grid.filter(obj => obj.type === 'Sk').length * 4));
+      setEnemyGold((prev) => prev + (grid.filter(obj => obj.type === 'Se').length * 3));
     }, 1000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [grid]);
 
   useEffect(() => {
     if (enemyGold >= 120) {
@@ -104,7 +108,7 @@ const App: React.FC = () => {
 
   const isControlledByPlayer = (x: number, y: number) => {
     const playerCastle = grid.find(obj => obj.type === 'K');
-    const playerBarracks = grid.filter(obj => obj.type === 'Bk');
+    const playerBarracks = grid.filter(obj => obj.type === 'Bk' || obj.type === 'Sk');
 
     const totalRadiusIncrease = playerBarracks.length * CONTROL_RADIUS_INCREMENT;
     const controlRadius = CONTROL_RADIUS + totalRadiusIncrease;
@@ -117,7 +121,7 @@ const App: React.FC = () => {
 
   const isControlledByEnemy = (x: number, y: number) => {
     const enemyCastle = grid.find(obj => obj.type === 'E');
-    const enemyBarracks = grid.filter(obj => obj.type === 'Be');
+    const enemyBarracks = grid.filter(obj => obj.type === 'Be' || obj.type === 'Se');
 
     const totalRadiusIncrease = enemyBarracks.length * CONTROL_RADIUS_INCREMENT;
     const controlRadius = CONTROL_RADIUS + totalRadiusIncrease;
@@ -148,6 +152,10 @@ const App: React.FC = () => {
         return 'gray';
       case 'Be':
         return 'darkgray';
+      case 'Sk':
+        return 'orange'; // цвет для 'Sk'
+      case 'Se':
+        return 'yellow'; // цвет для 'Se'
       default:
         return 'white';
     }
@@ -170,9 +178,9 @@ const App: React.FC = () => {
     }
   };
 
-  const handleBuildBarracks = () => {
+  const handleBuildBarracks = (type: 'Bk' | 'Sk') => {
     if (modalPosition) {
-      setGrid([...grid, { type: 'Bk', x: modalPosition.x, y: modalPosition.y }]);
+      setGrid([...grid, { type, x: modalPosition.x, y: modalPosition.y }]);
       setPlayerGold((prev) => prev - 120);
       setModalPosition(null);
       setIsModalOpen(false);
@@ -180,8 +188,11 @@ const App: React.FC = () => {
   };
 
   const buildEnemyBarracks = () => {
+    const isBuildingSk = Math.random() < 0.5;
+    const type = isBuildingSk ? 'Se' : 'Be';
+
     const enemyCastle = grid.find((obj) => obj.type === 'E');
-    const barracks = grid.filter(obj => obj.type === 'Be');
+    const barracks = grid.filter(obj => obj.type === 'Be' || obj.type === 'Se');
     if (!enemyCastle) return;
 
     let availablePositions = [];
@@ -197,7 +208,7 @@ const App: React.FC = () => {
 
     if (availablePositions.length > 0) {
       const pos = availablePositions[Math.floor(Math.random() * availablePositions.length)];
-      setGrid([...grid, { type: 'Be', x: pos.x, y: pos.y }]);
+      setGrid([...grid, { type, x: pos.x, y: pos.y }]);
       setEnemyGold((prev) => prev - 120);
     }
   };
@@ -220,7 +231,8 @@ const App: React.FC = () => {
             }}
           >
             <h3>Выбор постройки</h3>
-            <button onClick={handleBuildBarracks}>Казарма (120 золота)</button>
+            <button onClick={() => handleBuildBarracks('Bk')}>Казарма (120 золота)</button>
+            <button onClick={() => handleBuildBarracks('Sk')}>Розовая казарма (120 золота)</button>
           </div>
         )}
       </div>
