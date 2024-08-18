@@ -37,7 +37,7 @@ const App: React.FC = () => {
     { type: 'E', x: GRID_WIDTH - 3, y: GRID_HEIGHT - 3 },
   ]);
   const [playerGold, setPlayerGold] = useState(12010);
-  const [enemyGold, setEnemyGold] = useState(3010);
+  const [enemyGold, setEnemyGold] = useState(10);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalPosition, setModalPosition] = useState<{ x: number; y: number } | null>(null);
 
@@ -45,6 +45,9 @@ const App: React.FC = () => {
     player: PLAYER_BASE_HEALTH,
     enemy: ENEMY_BASE_HEALTH,
   };
+
+  const CONTROL_RADIUS = 1;
+  const CONTROL_RADIUS_INCREMENT = .0; // Каждая казарма увеличивает радиус контроля
 
   useEffect(() => {
     if (gridCanvasRef.current) {
@@ -60,7 +63,7 @@ const App: React.FC = () => {
   useEffect(() => {
     const interval = setInterval(() => {
       setPlayerGold((prev) => prev + 2);
-      setEnemyGold((prev) => prev + 2);
+      setEnemyGold((prev) => prev + 222);
     }, 1000);
 
     return () => clearInterval(interval);
@@ -73,42 +76,62 @@ const App: React.FC = () => {
   }, [enemyGold]);
 
   const renderGrid = (context: CanvasRenderingContext2D) => {
-    const playerCastle = grid.find(obj => obj.type === 'K');
-    const enemyCastle = grid.find(obj => obj.type === 'E');
-    const barracks = grid.filter(obj => obj.type === 'Bk' || obj.type === 'Be');
-
     for (let y = 0; y < GRID_HEIGHT; y++) {
       for (let x = 0; x < GRID_WIDTH; x++) {
-        if (playerCastle && (isControlledBy(x, y, playerCastle) || barracks.some(b => b.type === 'Bk' && isControlledBy(x, y, b) && isControlledBy(b.x, b.y, playerCastle)))) {
+        const controlledByPlayer = isControlledByPlayer(x, y);
+        const controlledByEnemy = isControlledByEnemy(x, y);
+
+        if (controlledByPlayer) {
           context.fillStyle = 'rgba(0, 0, 255, 0.15)';
-          context.fillRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
-        } else if (enemyCastle && (isControlledBy(x, y, enemyCastle) || barracks.some(b => b.type === 'Be' && isControlledBy(x, y, b) && isControlledBy(b.x, b.y, enemyCastle)))) {
+        } else if (controlledByEnemy) {
           context.fillStyle = 'rgba(255, 0, 0, 0.15)';
-          context.fillRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+        } else {
+          context.fillStyle = 'white';
         }
-      }
-    }
-
-    for (let y = 0; y < GRID_HEIGHT; y++) {
-      for (let x = 0; x < GRID_WIDTH; x++) {
-        const gridObject = grid.find((obj) => obj.x === x && obj.y === y);
-        let borderColor = 'black';
-
-        if (gridObject) {
-          context.fillStyle = getObjectColor(gridObject.type);
-          context.fillRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
-        }
-
-        context.strokeStyle = borderColor;
+        context.fillRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+        context.strokeStyle = 'black';
         context.strokeRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
       }
     }
+
+    for (const obj of grid) {
+      context.fillStyle = getObjectColor(obj.type);
+      context.fillRect(obj.x * CELL_SIZE, obj.y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+      context.strokeStyle = 'black';
+      context.strokeRect(obj.x * CELL_SIZE, obj.y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+    }
   };
 
-  const isControlledBy = (x: number, y: number, obj: GridObject) => {
+  const isControlledByPlayer = (x: number, y: number) => {
+    const playerCastle = grid.find(obj => obj.type === 'K');
+    const playerBarracks = grid.filter(obj => obj.type === 'Bk');
+
+    const totalRadiusIncrease = playerBarracks.length * CONTROL_RADIUS_INCREMENT;
+    const controlRadius = CONTROL_RADIUS + totalRadiusIncrease;
+
+    return playerCastle && (
+      isControlledBy(x, y, playerCastle, controlRadius) ||
+      playerBarracks.some(b => isControlledBy(x, y, b, controlRadius))
+    );
+  };
+
+  const isControlledByEnemy = (x: number, y: number) => {
+    const enemyCastle = grid.find(obj => obj.type === 'E');
+    const enemyBarracks = grid.filter(obj => obj.type === 'Be');
+
+    const totalRadiusIncrease = enemyBarracks.length * CONTROL_RADIUS_INCREMENT;
+    const controlRadius = CONTROL_RADIUS + totalRadiusIncrease;
+
+    return enemyCastle && (
+      isControlledBy(x, y, enemyCastle, controlRadius) ||
+      enemyBarracks.some(b => isControlledBy(x, y, b, controlRadius))
+    );
+  };
+
+  const isControlledBy = (x: number, y: number, obj: GridObject, radius: number) => {
     const dx = Math.abs(x - obj.x);
     const dy = Math.abs(y - obj.y);
-    return dx <= 1 && dy <= 1;
+    return dx <= radius && dy <= radius;
   };
 
   const getObjectColor = (type: GridObject['type']) => {
@@ -139,12 +162,9 @@ const App: React.FC = () => {
     const x = Math.floor((e.clientX - rect.left) / CELL_SIZE);
     const y = Math.floor((e.clientY - rect.top) / CELL_SIZE);
 
-    const playerCastle = grid.find((obj) => obj.type === 'K');
-    const barracks = grid.filter(obj => obj.type === 'Bk');
+    const isControlled = isControlledByPlayer(x, y) && !grid.some((obj) => obj.x === x && obj.y === y);
 
-    const isControlled = playerCastle && (isControlledBy(x, y, playerCastle) || barracks.some(b => isControlledBy(x, y, b) && isControlledBy(b.x, b.y, playerCastle)));
-
-    if (isControlled && !grid.some((obj) => obj.x === x && obj.y === y)) {
+    if (isControlled) {
       setModalPosition({ x, y });
       setIsModalOpen(true);
     }
@@ -168,9 +188,8 @@ const App: React.FC = () => {
 
     for (let y = 0; y < GRID_HEIGHT; y++) {
       for (let x = 0; x < GRID_WIDTH; x++) {
-        const isControlled = isControlledBy(x, y, enemyCastle) || barracks.some(b => isControlledBy(x, y, b) && isControlledBy(b.x, b.y, enemyCastle));
-        
-        if (isControlled && !grid.some((obj) => obj.x === x && obj.y === y)) {
+        const isControlled = isControlledByEnemy(x, y) && !grid.some((obj) => obj.x === x && obj.y === y);
+        if (isControlled) {
           availablePositions.push({ x, y });
         }
       }
