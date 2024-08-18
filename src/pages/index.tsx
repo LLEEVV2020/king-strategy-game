@@ -6,6 +6,13 @@ const CELL_SIZE = 50;
 const PLAYER_BASE_HEALTH = 2000;
 const ENEMY_BASE_HEALTH = 1000;
 
+const BASE_BUILDING_COSTS = {
+  Bk: 150,
+  Sk: 120,
+  Be: 200,
+  Se: 180,
+};
+
 interface GridObject {
   type: 'K' | 'E' | '@' | '#' | 'Bk' | 'Be' | 'Sk' | 'Se';
   x: number;
@@ -47,7 +54,7 @@ const App: React.FC = () => {
   };
 
   const CONTROL_RADIUS = 1;
-  const CONTROL_RADIUS_INCREMENT = .0; // Каждая казарма увеличивает радиус контроля
+  const CONTROL_RADIUS_INCREMENT = 0.0;
 
   useEffect(() => {
     if (gridCanvasRef.current) {
@@ -62,10 +69,9 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setPlayerGold((prev) => prev + 2);
-      setEnemyGold((prev) => prev + 3);
+      setPlayerGold((prev) => prev + 12);
+      setEnemyGold((prev) => prev + 9);
 
-      // Увеличиваем золото в зависимости от количества казарм
       setPlayerGold((prev) => prev + (grid.filter(obj => obj.type === 'Sk').length * 4));
       setEnemyGold((prev) => prev + (grid.filter(obj => obj.type === 'Se').length * 3));
     }, 1000);
@@ -74,7 +80,8 @@ const App: React.FC = () => {
   }, [grid]);
 
   useEffect(() => {
-    if (enemyGold >= 120) {
+    const enemyBarracksCost = BASE_BUILDING_COSTS['Be'] + (grid.filter(obj => obj.type === 'Be').length * BASE_BUILDING_COSTS.Se);
+    if (enemyGold >= enemyBarracksCost) {
       buildEnemyBarracks();
     }
   }, [enemyGold]);
@@ -153,22 +160,20 @@ const App: React.FC = () => {
       case 'Be':
         return 'darkgray';
       case 'Sk':
-        return 'orange'; // цвет для 'Sk'
+        return 'orange';
       case 'Se':
-        return 'yellow'; // цвет для 'Se'
+        return 'yellow';
       default:
         return 'white';
     }
   };
 
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (playerGold < 120) return;
+    const modalPos = gridCanvasRef.current?.getBoundingClientRect();
+    if (!modalPos) return;
 
-    const rect = gridCanvasRef.current?.getBoundingClientRect();
-    if (!rect) return;
-
-    const x = Math.floor((e.clientX - rect.left) / CELL_SIZE);
-    const y = Math.floor((e.clientY - rect.top) / CELL_SIZE);
+    const x = Math.floor((e.clientX - modalPos.left) / CELL_SIZE);
+    const y = Math.floor((e.clientY - modalPos.top) / CELL_SIZE);
 
     const isControlled = isControlledByPlayer(x, y) && !grid.some((obj) => obj.x === x && obj.y === y);
 
@@ -179,17 +184,20 @@ const App: React.FC = () => {
   };
 
   const handleBuildBarracks = (type: 'Bk' | 'Sk') => {
-    if (modalPosition) {
+    const existingCount = grid.filter(obj => obj.type === type).length;
+    const cost = BASE_BUILDING_COSTS[type] * (existingCount + 1);
+    if (modalPosition && playerGold >= cost) {
       setGrid([...grid, { type, x: modalPosition.x, y: modalPosition.y }]);
-      setPlayerGold((prev) => prev - 120);
+      setPlayerGold((prev) => prev - cost);
       setModalPosition(null);
       setIsModalOpen(false);
     }
   };
 
   const buildEnemyBarracks = () => {
-    const isBuildingSk = Math.random() < 0.5;
-    const type = isBuildingSk ? 'Se' : 'Be';
+    const type = Math.random() < 0.5 ? 'Se' : 'Be';
+    const existingCount = grid.filter(obj => obj.type === type).length;
+    const cost = BASE_BUILDING_COSTS[type] * (existingCount + 1);
 
     const enemyCastle = grid.find((obj) => obj.type === 'E');
     const barracks = grid.filter(obj => obj.type === 'Be' || obj.type === 'Se');
@@ -206,12 +214,27 @@ const App: React.FC = () => {
       }
     }
 
-    if (availablePositions.length > 0) {
+    if (availablePositions.length > 0 && enemyGold >= cost) {
       const pos = availablePositions[Math.floor(Math.random() * availablePositions.length)];
       setGrid([...grid, { type, x: pos.x, y: pos.y }]);
-      setEnemyGold((prev) => prev - 120);
+      setEnemyGold((prev) => prev - cost);
     }
   };
+
+  const getBarracksCosts = () => {
+    const bkCost = BASE_BUILDING_COSTS.Bk * (grid.filter(obj => obj.type === 'Bk').length + 1);
+    const skCost = BASE_BUILDING_COSTS.Sk * (grid.filter(obj => obj.type === 'Sk').length + 1);
+    return { bkCost, skCost };
+  };
+
+  const getEnemyBarracksCosts = () => {
+    const beCost = BASE_BUILDING_COSTS.Be * (grid.filter(obj => obj.type === 'Be').length + 1);
+    const seCost = BASE_BUILDING_COSTS.Se * (grid.filter(obj => obj.type === 'Se').length + 1);
+    return { beCost, seCost };
+  };
+
+  const { bkCost, skCost } = getBarracksCosts();
+  const { beCost, seCost } = getEnemyBarracksCosts();
 
   return (
     <div>
@@ -231,8 +254,12 @@ const App: React.FC = () => {
             }}
           >
             <h3>Выбор постройки</h3>
-            <button onClick={() => handleBuildBarracks('Bk')}>Казарма (120 золота)</button>
-            <button onClick={() => handleBuildBarracks('Sk')}>Розовая казарма (120 золота)</button>
+            <button onClick={() => handleBuildBarracks('Bk')}>
+              Казарма ({bkCost} золота)
+            </button>
+            <button onClick={() => handleBuildBarracks('Sk')}>
+              Розовая казарма ({skCost} золота)
+            </button>
           </div>
         )}
       </div>
@@ -241,10 +268,14 @@ const App: React.FC = () => {
         <div>
           <div>Ваше золото: {playerGold}</div>
           <div>Здоровье игрока: {baseHealth.player}</div>
+          <div>Стоимость казармы: {bkCost}</div>
+          <div>Стоимость розовой казармы: {skCost}</div>
         </div>
         <div>
           <div>Вражеское золото: {enemyGold}</div>
           <div>Здоровье врага: {baseHealth.enemy}</div>
+          <div>Стоимость казармы: {beCost}</div>
+          <div>Стоимость жёлтой казармы: {seCost}</div>
         </div>
       </div>
     </div>
