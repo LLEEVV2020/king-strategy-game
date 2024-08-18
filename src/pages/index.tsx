@@ -37,7 +37,7 @@ const App: React.FC = () => {
     { type: 'E', x: GRID_WIDTH - 3, y: GRID_HEIGHT - 3 },
   ]);
   const [playerGold, setPlayerGold] = useState(12010);
-  const [enemyGold, setEnemyGold] = useState(11010);
+  const [enemyGold, setEnemyGold] = useState(1010);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalPosition, setModalPosition] = useState<{ x: number; y: number } | null>(null);
 
